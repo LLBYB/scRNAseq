@@ -1,5 +1,4 @@
 library(Seurat)
-library(monocle3)
 library(harmony)
 library(patchwork)
 library(ggplot2)
@@ -8,18 +7,12 @@ library(ComplexHeatmap)
 
 data <- Read10X(data.dir = "/home/3002/")
 rrna.genes <- rownames(data)[grep("^rr.$",rownames(data))]
-rrna.genes
-
 data <- CreateSeuratObject(counts = data, project = "MTB", min.cells = 3, min.features = 10)
 # data$batch <- "batch1"
 data[["percent.rrna"]] <- PercentageFeatureSet(data, pattern = "^rr.$")
 data <- data[!rownames(data) %in% c(rrna.genes) , ]
-data;data
-data <- subset(data, subset = nCount_RNA >200 & nCount_RNA < 3000)
-
 n_UMI <- c(15,50, 100, 200, 400)
 data_subsets <- list()
-
 for (umi in n_UMI) {
   subset_name <- paste0("UMI>", umi)
   data_subsets[[subset_name]] <- subset(
@@ -144,7 +137,7 @@ data <- SCTransform(
 )
 
 data <- RunPCA(object = data)
-# data <- RunHarmony(data, group.by.vars = "batch") #多组样品去除批次效应
+# data <- RunHarmony(data, group.by.vars = "batch") #For comparative analyses across multiple treatment groups.
 VizDimLoadings(data,dims = 1:10,reduction = "pca",nfeatures = 30)
 DimPlot(data,reduction = "pca",
         pt.size = 1,  
@@ -157,7 +150,7 @@ data.markers <- FindAllMarkers(object = data, only.pos = TRUE, min.pct = 0.25, l
 
 VlnPlot(data, features = c("pks13"), pt.size = 0)
 FeaturePlot(
-  sce, 
+  data, 
   features = c("pks13"), 
   pt.size = 0.5,
   cols = c( "blue","yellow","red" )  
@@ -177,7 +170,38 @@ ggplot(data = Cellratio, aes(x =Var2, y = Freq, fill =  Var1)) +
   ) 
 
 
+genes_to_check=c("tuf","fusA1","rpsA","sigA","gyrA","nrdE","mas","desA1","desA2","atpA","qcrB","ctaE","nuoM", "gltA2","sdhD",
+                 "accA2","accD2", "kasA","kasB","accD6","acpS","fas","pptT","accA3","cut3","pks13","fadD32",
+                 "rnpB","Rv1922","leuT","glyU","tyrT","thrT","metT","aspT","alaV","glnT","asnT","hisT","lysU"            
+)
+DotPlot(data, features = unique(genes_to_check)) +
+  RotatedAxis() +
+  xlab("") + 
+  ylab("Cluster") +
+  theme_bw() +
+  theme(
+    text = element_text(family = "sans", size = 10), 
+    panel.grid.major = element_line(color = "grey90", linewidth = 0.3, linetype = "dashed"),
+    panel.grid.minor = element_blank(),
+    axis.text.x = element_text(size = 8, angle = 90, hjust = 1, vjust = 0.5, face = "bold"), 
+    axis.text.y = element_text(size = 9, face = "bold"),
+    axis.title.y = element_text(size = 10, face = "bold", margin = margin(r = 10)), 
+    legend.title = element_text(size = 9, face = "bold"),
+    legend.text = element_text(size = 8),
+    legend.position = 'bottom',
+    legend.box = "horizontal", 
+    legend.key.size = unit(0.2, "inch"), 
+    legend.spacing.x = unit(0.1, 'inch')
+  ) +
+  scale_radius(limits = c(0, 100), range = c(3, 6)) + 
+  scale_color_gradientn(
+     colours = c( '#e0f3f8','#FFF','#d73027'),  
+    values = scales::rescale(c(0,0.3,0.5,0.7,1)) 
+  ) +
+  labs(color = "Average Expression", size = "Percent Expressed")
 
+
+library(monocle3)
 expression_matrix <- GetAssayData(data, assay = 'SCT',slot = 'counts')
 cell_metadata <- data@meta.data
 gene_annotation <- data.frame(gene_short_name = rownames(data@assays$SCT@data))
@@ -249,7 +273,7 @@ markergenes=c("desA1","desA2","mce1F","mce1C","ppsC","fadD29","PPE20",
 cds_subset <- cds[rowData(cds)$gene_short_name %in% markergenes, ]
 plot_genes_in_pseudotime(cds_subset, color_cells_by = "celltype")
 
-pseudotime_vals <- pseudotime(cds)
+pseudotime_values <- pseudotime(cds)
 ordered_cells <- names(sort(pseudotime_values, na.last = TRUE))
 expr_matrix <- exprs(cds)[rowData(cds)$gene_short_name %in%markergenes, ordered_cells]
 expr_matrix_dense <- as.matrix(expr_matrix)
