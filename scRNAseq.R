@@ -1,9 +1,10 @@
 library(Seurat)
 library(harmony)
-library(patchwork)
 library(ggplot2)
-library(scater)
 library(ComplexHeatmap)
+library(circlize)
+library(monocle3)
+
 
 data <- Read10X(data.dir = "3002/")
 rrna.genes <- rownames(data)[grep("^rr.$",rownames(data))]
@@ -202,7 +203,6 @@ DotPlot(data, features = unique(genes_to_check)) +
   labs(color = "Average Expression", size = "Percent Expressed")
 
 
-library(monocle3)
 expression_matrix <- GetAssayData(data, assay = 'SCT',slot = 'counts')
 cell_metadata <- data@meta.data
 gene_annotation <- data.frame(gene_short_name = rownames(data@assays$SCT@data))
@@ -294,7 +294,7 @@ row_ha <- rowAnnotation(
   show_annotation_name = TRUE
 )
 
-library(circlize)
+
 Heatmap(
   expr_scaled_ordered,
   name = "Expression\nZ-score", 
