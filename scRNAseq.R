@@ -5,10 +5,11 @@ library(ggplot2)
 library(scater)
 library(ComplexHeatmap)
 
-data <- Read10X(data.dir = "/home/3002/")
+data <- Read10X(data.dir = "3002/")
 rrna.genes <- rownames(data)[grep("^rr.$",rownames(data))]
 data <- CreateSeuratObject(counts = data, project = "MTB", min.cells = 3, min.features = 10)
 # data$batch <- "batch1"
+data$stim <- "Ctrl"
 data[["percent.rrna"]] <- PercentageFeatureSet(data, pattern = "^rr.$")
 data <- data[!rownames(data) %in% c(rrna.genes) , ]
 n_UMI <- c(15,50, 100, 200, 400)
@@ -58,7 +59,7 @@ gene_results <- data.frame(
 
 
 for (threshold in names(data_subsets)) {
-
+  
   current_subset <- data_subsets[[threshold]]
   cell_count <- ncol(current_subset)
   Median_gene <- median(current_subset$nFeature_RNA, na.rm = TRUE)
@@ -85,7 +86,7 @@ for (threshold in names(data_subsets)) {
     Threshold = factor(threshold, levels = names(data_subsets)),
     Cell = colnames(current_data)
   )
-
+  
   combined_data <- rbind(combined_data, temp_df)
 }
 
@@ -195,7 +196,7 @@ DotPlot(data, features = unique(genes_to_check)) +
   ) +
   scale_radius(limits = c(0, 100), range = c(3, 6)) + 
   scale_color_gradientn(
-     colours = c( '#e0f3f8','#FFF','#d73027'),  
+    colours = c( '#e0f3f8','#FFF','#d73027'),  
     values = scales::rescale(c(0,0.3,0.5,0.7,1)) 
   ) +
   labs(color = "Average Expression", size = "Percent Expressed")
@@ -231,7 +232,7 @@ cds <- learn_graph(
   verbose = TRUE
 )
 
-plot_cells(cds, label_groups_by_cluster=FALSE,  color_cells_by = "celltype")
+# plot_cells(cds, label_groups_by_cluster=FALSE,  color_cells_by = "celltype")
 plot_cells(cds, color_cells_by = "cluster", label_groups_by_cluster = TRUE, group_label_size = 3.5)
 
 get_earliest_principal_node <- function(cds, time_bin="1"){
@@ -248,30 +249,19 @@ plot_cells(cds, color_cells_by = "pseudotime",
            label_cell_groups=FALSE,label_leaves=FALSE,
            label_branch_points=FALSE,graph_label_size=1.5)
 
-plot_cells(
-  cds,
-  genes = "pks13", 
-  label_cell_groups = FALSE,
-  show_trajectory_graph = TRUE,
-  cell_size = 0.7
-)
 
+markergenes <- c("embA","embB","mmpL3","mmpL10") 
 
-plot_cells(
-  cds,
-  genes = "pks13",
-  color_cells_by = "celltype",
-  label_cell_groups = TRUE,
-  cell_size = 0.7
-) 
+cds_subset <- cds[rowData(cds)$gene_short_name %in% markergenes, ]
+
+plot_genes_in_pseudotime(cds_subset,
+                         color_cells_by="pseudotime",
+                         min_expr=0.1,ncol = 6)
 
 markergenes=c("desA1","desA2","mce1F","mce1C","ppsC","fadD29","PPE20",
               "fbpC","umaA","pcaA","hadC","mmaA4","fabD","kasA","kasB",
               "accD6","fas","accD5","accE5","accA3",
               "accD4","pks13","fadD32","fbpA","embA","embB","mmpL3","mmpL10")
-
-cds_subset <- cds[rowData(cds)$gene_short_name %in% markergenes, ]
-plot_genes_in_pseudotime(cds_subset, color_cells_by = "celltype")
 
 pseudotime_values <- pseudotime(cds)
 ordered_cells <- names(sort(pseudotime_values, na.last = TRUE))
@@ -304,7 +294,7 @@ row_ha <- rowAnnotation(
   show_annotation_name = TRUE
 )
 
-
+library(circlize)
 Heatmap(
   expr_scaled_ordered,
   name = "Expression\nZ-score", 
@@ -323,8 +313,6 @@ Heatmap(
     legend_height = unit(3, "cm")
   )
 )
-
-
 
 
 
